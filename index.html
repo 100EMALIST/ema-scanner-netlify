@@ -47,15 +47,16 @@
   .crow:hover .rlbl{background:#22223a}
   .rlbl{background:var(--label-bg);padding:4px 8px;font-size:.58rem;color:var(--white);display:flex;align-items:center;text-transform:uppercase;letter-spacing:.04em;cursor:default}
   .rgap{background:var(--label-bg)}
-  .cell{padding:4px 4px;text-align:center;font-size:.67rem;display:flex;align-items:center;justify-content:center;background:var(--dark)}
+  .cell{padding:4px 4px;text-align:center;font-size:.67rem;display:flex;align-items:center;justify-content:center;background:var(--dark);border-left:1px solid rgba(255,255,255,0.06)}
   .blank .rlbl,.blank .rgap,.blank .cell{height:5px;padding:0;background:var(--label-bg)}
+  .cell.swing-start{border-left:2px solid rgba(255,255,255,0.2)!important}
   /* TICKER ROW */
   .tick-row{display:grid;grid-template-columns:120px 6px repeat(6,1fr)}
-  .tick-name{background:var(--label-bg);padding:6px 10px;font-weight:700;font-size:.78rem;cursor:pointer}
+  .tick-name{background:var(--label-bg);padding:4px 8px;font-weight:700;font-size:.75rem;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tick-name:hover{background:#252540}
   .tick-name.bull{color:var(--green)}.tick-name.bear{color:var(--red)}
   .tick-gap{background:var(--label-bg)}
-  .tick-tf{padding:5px 4px;text-align:center;font-weight:700;font-size:.65rem;letter-spacing:.06em}
+  .tick-tf{padding:3px 4px;text-align:center;font-weight:700;font-size:.62rem;letter-spacing:.05em}
   .tick-tf.trade{background:var(--trade-bg)}.tick-tf.swing{background:var(--swing-bg)}
   /* PILLS */
   .pill{display:inline-block;padding:2px 5px;border-radius:3px;font-weight:700;font-size:.58rem}
@@ -127,7 +128,7 @@ const TICKERS = [
   'SPHR','QBTS','BBAI','SERV','BE','EOSE','RKLB','ASTS','UBER','MSTR',
   'ONDS','FLY','CART','RGTI','CVE','WULF','IONQ','LBRT',
   'TEM','LUNR','COHR','CRCL','PL','OUST','HUT','LUMN','CORZ',
-  'KULR','BYND','NTLA'
+  'KULR','BYND','NTLA','XAGUSD=X'
 ];
 
 const CFG = {
@@ -374,14 +375,8 @@ function buildCard(res){
   const TC=['trade','trade','swing','swing','swing','swing'];
   const T=TL.map(k=>tfs[k]);
   const cells=(fn)=>T.map(t=>t?fn(t):nd());
-  const row=(lbl,cls)=>`<div class="crow">
-    <div class="rlbl">${lbl}</div><div class="rgap"></div>
-    ${cls.map(c=>`<div class="cell">${c}</div>`).join('')}
-  </div>`;
-  const blank=()=>`<div class="crow blank">
-    <div class="rlbl"></div><div class="rgap"></div>
-    ${T.map(()=>'<div class="cell"></div>').join('')}
-  </div>`;
+  const row=(lbl,cls)=>`<div class="crow"><div class="rlbl">${lbl}</div><div class="rgap"></div>${cls.map((c,i)=>`<div class="cell${i===3?' swing-start':''}">${c}</div>`).join('')}</div>`;
+  const blank=()=>`<div class="crow blank"><div class="rlbl"></div><div class="rgap"></div>${T.map((_,i)=>`<div class="cell${i===3?' swing-start':''}"></div>`).join('')}</div>`;
 
   // Action row — only show relevant one
   const actLabel=dailyBull
@@ -393,12 +388,12 @@ function buildCard(res){
     <div style="display:grid;grid-template-columns:120px 6px 2fr 4fr">
       <div style="background:var(--label-bg)"></div>
       <div style="background:var(--label-bg)"></div>
-      <div style="background:var(--trade-bg);padding:3px 4px;text-align:center;font-size:.58rem;font-weight:700;letter-spacing:.08em;color:var(--white)">── TRADE ──</div>
-      <div style="background:var(--swing-bg);padding:3px 4px;text-align:center;font-size:.58rem;font-weight:700;letter-spacing:.08em;color:var(--white)">── SWING ──</div>
+      <div style="background:var(--trade-bg);padding:2px 4px;text-align:center;font-size:.52rem;font-weight:600;letter-spacing:.06em;color:rgba(255,255,255,0.7)">─ TRADE ─</div>
+      <div style="background:var(--swing-bg);padding:2px 4px;text-align:center;font-size:.52rem;font-weight:600;letter-spacing:.06em;color:rgba(255,255,255,0.7)">─ SWING ─</div>
     </div>
     <div class="tick-row">
       <div class="tick-name ${dailyBull?'bull':'bear'}" onclick="openTV('${ticker}')">
-        ${ticker}<br><span style="font-size:.58rem;color:var(--dim);font-weight:400">$${price?.toFixed(2)||'–'}</span>
+        ${ticker} <span style="font-size:.55rem;color:var(--dim);font-weight:400">$${price?.toFixed(2)||'–'}</span>
       </div>
       <div class="tick-gap"></div>
       ${TL.map((_,i)=>`<div class="tick-tf ${TC[i]}">${['15m','30m','1H','4H','1D','1W'][i]}</div>`).join('')}
