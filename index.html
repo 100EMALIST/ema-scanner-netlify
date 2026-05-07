@@ -49,7 +49,7 @@
   .rgap{background:var(--label-bg)}
   .cell{padding:4px 4px;text-align:center;font-size:.67rem;display:flex;align-items:center;justify-content:center;background:var(--dark);border-left:1px solid rgba(255,255,255,0.06)}
   .blank .rlbl,.blank .rgap,.blank .cell{height:5px;padding:0;background:var(--label-bg)}
-  .cell.swing-start{border-left:2px solid rgba(255,255,255,0.2)!important}
+  .cell.swing-start{border-left:3px solid var(--label-bg)!important}
   /* TICKER ROW */
   .tick-row{display:grid;grid-template-columns:120px 6px repeat(6,1fr)}
   .tick-name{background:var(--label-bg);padding:4px 8px;font-weight:700;font-size:.75rem;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -375,8 +375,8 @@ function buildCard(res){
   const TC=['trade','trade','swing','swing','swing','swing'];
   const T=TL.map(k=>tfs[k]);
   const cells=(fn)=>T.map(t=>t?fn(t):nd());
-  const row=(lbl,cls)=>`<div class="crow"><div class="rlbl">${lbl}</div><div class="rgap"></div>${cls.map((c,i)=>`<div class="cell${i===3?' swing-start':''}">${c}</div>`).join('')}</div>`;
-  const blank=()=>`<div class="crow blank"><div class="rlbl"></div><div class="rgap"></div>${T.map((_,i)=>`<div class="cell${i===3?' swing-start':''}"></div>`).join('')}</div>`;
+  const row=(lbl,cls)=>`<div class="crow"><div class="rlbl">${lbl}</div><div class="rgap"></div>${cls.map((c,i)=>`<div class="cell${i===2?' swing-start':''}">${c}</div>`).join('')}</div>`;
+  const blank=()=>`<div class="crow blank"><div class="rlbl"></div><div class="rgap"></div>${T.map((_,i)=>`<div class="cell${i===2?' swing-start':''}"></div>`).join('')}</div>`;
 
   // Action row — only show relevant one
   const actLabel=dailyBull
