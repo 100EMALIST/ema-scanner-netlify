@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>200 EMA Dashboard Scanner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap');
+  :root {
+    --bg:#080c14; --surface:#0d1420; --border:#1a2540; --hdr:#0a1628;
+    --green:#00e676; --red:#ff1744; --amber:#ff9100; --gold:#ffd600;
+    --blue:#00b0ff; --purple:#cc00ff; --dim:#3a4a6a; --text:#c8d8f0;
+    --white:#ffffff; --label-bg:#1a1a2e; --trade-bg:#1a3a4a; --swing-bg:#0d1f4e;
+    --buy-bg:#006400; --watch-bg:#b8600a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:10px}
+  .logo{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--white)}.logo span{color:var(--green)}
+  .status-bar{display:flex;align-items:center;gap:16px;font-size:.7rem;color:var(--dim)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}.dot.live{background:var(--green);animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .loading-bar{height:2px;background:linear-gradient(90deg,var(--blue),var(--purple));animation:scan 1.5s linear infinite;display:none}.loading-bar.active{display:block}
+  @keyframes scan{0%{width:0%;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0%;margin-left:100%}}
+  .progress{font-size:.7rem;color:var(--dim);padding:6px 24px;min-height:22px}
+  .filters{display:flex;gap:8px;padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .fbtn{padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:.68rem;cursor:pointer;transition:all .18s;text-transform:uppercase;letter-spacing:.05em}
+  .fbtn:hover{border-color:var(--blue);color:var(--blue)}.fbtn.active{background:var(--blue);border-color:var(--blue);color:#000;font-weight:700}
+  .grid-wrap{padding:16px 24px;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.71rem;min-width:1100px}
+  th{padding:7px 10px;text-align:center;font-weight:700;font-size:.63rem;letter-spacing:.07em;text-transform:uppercase;border-bottom:2px solid var(--border);white-space:nowrap}
+  th.lbl{background:var(--label-bg);color:var(--text);text-align:left;padding-left:14px}
+  th.trade{background:var(--trade-bg);color:var(--white)}
+  th.swing{background:var(--swing-bg);color:var(--white)}
+  th.gap{background:var(--label-bg);width:8px;padding:0;border:none}
+  th.srt{cursor:pointer}.th.srt:hover{color:var(--gold)}
+  td{padding:7px 10px;text-align:center;border-bottom:1px solid rgba(26,37,64,.5);white-space:nowrap;vertical-align:middle}
+  td.lbl{text-align:left;padding-left:14px;background:var(--label-bg);cursor:pointer;font-weight:600}
+  td.lbl:hover{background:#22223a}
+  td.gap{background:var(--label-bg);padding:0;width:8px}
+  tr:hover td{background:rgba(255,255,255,.025)}
+  tr:hover td.lbl{background:#22223a}
+  tr:hover td.gap{background:var(--label-bg)}
+  .g{color:var(--green)}.r{color:var(--red)}.a{color:var(--amber)}.go{color:var(--gold)}.b{color:var(--blue)}.p{color:var(--purple)}.d{color:var(--dim)}.w{color:var(--white)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:3px;font-weight:700;font-size:.62rem}
+  .buy{background:var(--buy-bg);color:var(--green)}
+  .watch{background:var(--watch-bg);color:var(--amber)}
+  .rbuy{background:#3d0000;color:var(--red)}
+  .rwatch{background:#2a1a00;color:var(--amber)}
+  .mtfp{background:#1a0050;color:var(--purple)}
+  .aplus{background:#3d3000;color:var(--gold)}
+  .agrade{background:#003d00;color:var(--green)}
+  .bgrade{background:#003d3d;color:var(--blue)}
+  .vl{color:#888}.vn{color:var(--white)}.vh{color:var(--amber)}
+  footer{padding:16px 24px;font-size:.62rem;color:var(--dim);border-top:1px solid var(--border);margin-top:16px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">200 EMA <span>DASHBOARD</span> SCANNER</div>
+  <div class="status-bar">
+    <div class="dot" id="dot"></div>
+    <span id="stat">Initialising...</span>
+    <span id="lupd"></span>
+    <span id="cnt"></span>
+  </div>
+</div>
+<div class="loading-bar" id="lb"></div>
+<div class="progress" id="prog"></div>
+
+<div class="filters">
+  <button class="fbtn active" onclick="setF(this,'ALL')">ALL</button>
+  <button class="fbtn" onclick="setF(this,'BULL')">🟢 BULL</button>
+  <button class="fbtn" onclick="setF(this,'BEAR')">🔴 BEAR</button>
+  <button class="fbtn" onclick="setF(this,'CONT_BUY')">CONT BUY</button>
+  <button class="fbtn" onclick="setF(this,'CONT_WATCH')">CONT WATCH</button>
+  <button class="fbtn" onclick="setF(this,'REV_BUY')">REV BUY</button>
+  <button class="fbtn" onclick="setF(this,'REV_WATCH')">REV WATCH</button>
+  <button class="fbtn" onclick="setF(this,'MTF')">🎯 MTF LONG</button>
+  <button class="fbtn" onclick="setF(this,'NEAR')">NEAR 200</button>
+  <button class="fbtn" onclick="setF(this,'FVG')">FVG</button>
+  <button class="fbtn" onclick="setF(this,'RSI_OS')">RSI OVERSOLD</button>
+  <button class="fbtn" onclick="setF(this,'HIGH_VOL')">HIGH VOL</button>
+  <button class="fbtn" onclick="setF(this,'LOW_VOL')">LOW VOL</button>
+</div>
+
+<div class="grid-wrap">
+<table>
+<thead>
+<tr>
+  <th class="lbl" rowspan="2">TICKER</th>
+  <th class="trade" colspan="4">── TRADE ──</th>
+  <th class="gap" rowspan="2"></th>
+  <th class="swing" colspan="5">── SWING ──</th>
+</tr>
+<tr>
+  <th class="trade">1H</th>
+  <th class="trade">4H</th>
+  <th class="trade srt" onclick="sortBy('1d')">1D ▾</th>
+  <th class="trade">VOL</th>
+  <th class="swing">RSI 4H</th>
+  <th class="swing">RSI 1D</th>
+  <th class="swing">ACTION</th>
+  <th class="swing">FVG / S&R</th>
+  <th class="swing">CONF</th>
+</tr>
+</thead>
+<tbody id="tbody">
+  <tr><td colspan="11" style="padding:50px;text-align:center;color:var(--dim)">Starting scan...</td></tr>
+</tbody>
+</table>
+</div>
+<footer>Data: Yahoo Finance · Auto-refreshes every 5 min · Click ticker → TradingView · Not financial advice</footer>
+
+<script>
+// ══ YOUR WATCHLIST ════════════════════════════════════════════════════════
+const TICKERS = [
+  'RXT','FLNC','FTNT','FIG','APP','SGML','UUUU','PATH','TOST','ADSK',
+  'RZLV','RBLX','SHOP','POET','OSCR','TSLA','ADBE','AXTI','GRAB','NVDA',
+  'FCX','ZETA','ORCL','SNAP','SOUN','SMCI','PYPL','NKE','NIO','NFLX',
+  'CSCO','BABA','HNGE','PACS','IREN','OPEN','NUVB','GOOG','MU','INTC',
+  'ASML','HPQ','ENPH','AVGO','NBIS','RIVN','ONON','DELL','MP','AMD',
+  'SPHR','QBTS','BBAI','SERV','BE','EOSE','RKLB','ASTS','UBER','MSTR',
+  'ONDS','FLY','BMNR','CART','PTGX','RGTI','SNDK','CVE','WULF','IONQ',
+  'LBRT','CIFR','PONY','CRWV','NVTS','TEM','LAES','LUNR','COHR','CRCL',
+  'BTDR','PL','OUST','HUT','LUMN','CORZ','DBI','PRME','INTS','CYPH',
+  'MSAI','BLSH','KULR','DGXX','SLNH','KLXE','ACNT','BYND','FJET','NTLA','RDW'
+];
+
+const CONT_BUY_PCT   = 5;
+const CONT_WATCH_PCT = 10;
+const REV_WATCH_PCT  = 15;
+const VOL_HIGH = 1.5;
+const VOL_LOW  = 0.8;
+const RSI_OS   = 35;
+const RSI_OB   = 70;
+
+let results = {};
+let curFilter = 'ALL';
+let sortCol = '1d';
+let sortDir = -1;
+let scanning = false;
+
+// ══ FETCH via Netlify Function ════════════════════════════════════════════
+async function fetchY(ticker, interval, range) {
+  try {
+    const url = `/.netlify/functions/yahoo?ticker=${ticker}&interval=${interval}&range=${range}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+// ══ EXTRACT BARS ══════════════════════════════════════════════════════════
+function bars(data) {
+  try {
+    const q = data.chart.result[0].indicators.quote[0];
+    return q.close.map((c,i)=>({o:q.open[i],h:q.high[i],l:q.low[i],c,v:q.volume[i]}))
+                  .filter(x=>x.c!=null&&x.h!=null&&x.l!=null);
+  } catch { return []; }
+}
+
+// ══ INDICATORS ════════════════════════════════════════════════════════════
+function ema(bs, period, src='c') {
+  if (!bs||bs.length<period) return null;
+  const k=2/(period+1);
+  let e=bs.slice(0,period).reduce((a,b)=>a+b[src],0)/period;
+  for(let i=period;i<bs.length;i++) e=bs[i][src]*k+e*(1-k);
+  return e;
+}
+
+function rsi(bs, period=14) {
+  if (!bs||bs.length<period+1) return null;
+  let g=0,l=0;
+  for(let i=1;i<=period;i++){const d=bs[i].c-bs[i-1].c;d>0?g+=d:l-=d}
+  let ag=g/period,al=l/period;
+  for(let i=period+1;i<bs.length;i++){
+    const d=bs[i].c-bs[i-1].c;
+    ag=(ag*(period-1)+Math.max(d,0))/period;
+    al=(al*(period-1)+Math.max(-d,0))/period;
+  }
+  return al===0?100:100-(100/(1+ag/al));
+}
+
+function rvol(bs, period=20) {
+  if (!bs||bs.length<period+1) return null;
+  const avg=bs.slice(-period-1,-1).reduce((a,b)=>a+(b.v||0),0)/period;
+  return avg>0?(bs[bs.length-1].v||0)/avg:null;
+}
+
+function fvg(bs, minPct=0.1) {
+  if (!bs||bs.length<3) return {txt:'–',type:'none'};
+  const price=bs[bs.length-1].c;
+  for(let i=bs.length-1;i>=2&&i>=bs.length-15;i--){
+    const bullGap=bs[i].l-bs[i-2].h;
+    if(bullGap>0&&bullGap/price*100>=minPct){
+      if(price>=bs[i-2].h&&price<=bs[i].l) return {txt:'IN BULL FVG',type:'in_bull'};
+      const prox=Math.min(Math.abs(price-bs[i].l),Math.abs(price-bs[i-2].h))/price*100;
+      if(prox<=3) return {txt:`${prox.toFixed(1)}% BULL FVG`,type:'near_bull'};
+    }
+    const bearGap=bs[i-2].l-bs[i].h;
+    if(bearGap>0&&bearGap/price*100>=minPct){
+      if(price<=bs[i-2].l&&price>=bs[i].h) return {txt:'IN BEAR FVG',type:'in_bear'};
+    }
+  }
+  return {txt:'–',type:'none'};
+}
+
+function sr(bs, lookback=20) {
+  if(!bs||bs.length<lookback) return null;
+  const price=bs[bs.length-1].c;
+  const sl=bs.slice(-lookback);
+  const swH=Math.max(...sl.map(b=>b.h));
+  const swL=Math.min(...sl.map(b=>b.l));
+  const pH=Math.abs(price-swH)/price*100;
+  const pL=Math.abs(price-swL)/price*100;
+  return pH<pL
+    ?{txt:`RES $${swH.toFixed(2)}`,bullish:false,near:pH<=2}
+    :{txt:`SUP $${swL.toFixed(2)}`,bullish:true,near:pL<=2};
+}
+
+// ══ SCAN ONE TICKER ═══════════════════════════════════════════════════════
+async function scan(ticker) {
+  try {
+    const [d1,d1w,d1h]=await Promise.all([
+      fetchY(ticker,'1d','2y'),
+      fetchY(ticker,'1wk','5y'),
+      fetchY(ticker,'60m','3mo'),
+    ]);
+
+    const daily=bars(d1);
+    const weekly=bars(d1w);
+    const hourly=bars(d1h);
+
+    if(daily.length<60) return null;
+
+    const price=daily[daily.length-1].c;
+
+    const e200_1d=ema(daily,200);
+    const e200_1w=ema(weekly,200);
+    const e5l_1d=ema(daily,5,'l');
+    const e200_1h=hourly.length>=200?ema(hourly,200):null;
+    const e200_4h=ema(daily.slice(-100),50);
+
+    const ab_1d=e200_1d?price>e200_1d:false;
+    const ab_4h=e200_4h?price>e200_4h:false;
+    const ab_1h=e200_1h?price>e200_1h:null;
+
+    const pct_1d=e200_1d?Math.abs(price-e200_1d)/e200_1d*100:null;
+    const pct_4h=e200_4h?Math.abs(price-e200_4h)/e200_4h*100:null;
+    const pct_1h=e200_1h?Math.abs(price-e200_1h)/e200_1h*100:null;
+
+    const rv=rvol(daily);
+    const r1d=rsi(daily);
+    const r4h=rsi(daily.slice(-50));
+    const fvgR=fvg(daily);
+    const srR=sr(daily);
+
+    const mtfLong=ab_1d&&!ab_4h;
+
+    let action='–';
+    if(ab_1d){
+      if(pct_4h!=null&&pct_4h<=CONT_BUY_PCT) action='CONT_BUY';
+      else if(pct_4h!=null&&pct_4h<=CONT_WATCH_PCT) action='CONT_WATCH';
+    } else {
+      if(ab_4h) action='REV_BUY';
+      else if(pct_4h!=null&&pct_4h<=REV_WATCH_PCT) action='REV_WATCH';
+    }
+
+    let conf=0;
+    if(ab_1d) conf++;
+    if(pct_1d&&pct_1d<=5) conf++;
+    if(e5l_1d&&price>e5l_1d) conf++;
+    if(r4h&&r4h<=RSI_OS) conf++;
+    if(fvgR.type==='in_bull') conf++;
+    if(srR&&srR.bullish&&srR.near) conf++;
+    if(rv&&rv>=VOL_LOW&&rv<VOL_HIGH) conf++;
+
+    const confR=conf>=6?'A+':conf>=4?'A':conf>=3?'B':conf>=2?'C':'–';
+
+    const tags=['ALL'];
+    if(ab_1d) tags.push('BULL'); else tags.push('BEAR');
+    if(action==='CONT_BUY') tags.push('CONT_BUY');
+    if(action==='CONT_WATCH') tags.push('CONT_WATCH');
+    if(action==='REV_BUY') tags.push('REV_BUY');
+    if(action==='REV_WATCH') tags.push('REV_WATCH');
+    if(mtfLong) tags.push('MTF');
+    if(pct_1d&&pct_1d<=5) tags.push('NEAR');
+    if(fvgR.type!=='none') tags.push('FVG');
+    if((r4h&&r4h<=RSI_OS)||(r1d&&r1d<=RSI_OS)) tags.push('RSI_OS');
+    if(rv&&rv>=VOL_HIGH) tags.push('HIGH_VOL');
+    if(rv&&rv<=VOL_LOW) tags.push('LOW_VOL');
+
+    return {ticker,price,ab_1d,ab_4h,ab_1h,pct_1d,pct_4h,pct_1h,rv,r1d,r4h,fvgR,srR,mtfLong,action,conf,confR,tags:tags.join(',')};
+  } catch { return null; }
+}
+
+// ══ RENDER HELPERS ════════════════════════════════════════════════════════
+const p=(cls,txt)=>`<span class="pill ${cls}">${txt}</span>`;
+const sp=(cls,txt)=>`<span class="${cls}">${txt}</span>`;
+
+function proxCell(pct,isAbove){
+  if(pct==null) return sp('d','–');
+  return sp(isAbove?'g':'r',`${isAbove?'▲':'▼'} ${pct.toFixed(2)}%`);
+}
+function volCell(rv){
+  if(rv==null) return sp('d','–');
+  if(rv>=VOL_HIGH) return sp('vh','HIGH');
+  if(rv<=VOL_LOW) return sp('vl','LOW');
+  return sp('vn','NORMAL');
+}
+function rsiCell(v){
+  if(!v) return sp('d','–');
+  return sp(v>=RSI_OB?'r':v<=RSI_OS?'g':'w',Math.round(v*10)/10);
+}
+function actionCell(action){
+  if(action==='CONT_BUY') return p('buy','BUY');
+  if(action==='CONT_WATCH') return p('watch','WATCH');
+  if(action==='REV_BUY') return p('rbuy','REV BUY');
+  if(action==='REV_WATCH') return p('rwatch','REV WATCH');
+  return sp('d','–');
+}
+function fvgCell(f){
+  if(!f||f.type==='none') return sp('d','–');
+  if(f.type==='in_bull') return sp('g','IN BULL FVG');
+  if(f.type==='in_bear') return sp('r','IN BEAR FVG');
+  if(f.type==='near_bull') return sp('a',f.txt);
+  return sp('d','–');
+}
+function srCell(s){
+  if(!s) return sp('d','–');
+  return sp(s.bullish?(s.near?'g':'d'):(s.near?'a':'d'),s.txt);
+}
+function confCell(r,conf){
+  if(r==='A+') return p('aplus','A+ ★★★');
+  if(r==='A') return p('agrade','A ★★');
+  if(r==='B') return p('bgrade','B ★');
+  if(r==='C') return sp('d',`${conf}/7`);
+  return sp('d','–');
+}
+
+function buildRow(r){
+  return `<tr data-tags="${r.tags}">
+    <td class="lbl ${r.ab_1d?'g':'r'}" onclick="openTV('${r.ticker}')">
+      ${r.ticker}<br><span style="font-size:.6rem;color:var(--dim);font-weight:400">$${r.price?.toFixed(2)||'–'}</span>
+    </td>
+    <td>${proxCell(r.pct_1h,r.ab_1h)}</td>
+    <td>${proxCell(r.pct_4h,r.ab_4h)}</td>
+    <td>${proxCell(r.pct_1d,r.ab_1d)}</td>
+    <td>${volCell(r.rv)}</td>
+    <td class="gap"></td>
+    <td>${rsiCell(r.r4h)}</td>
+    <td>${rsiCell(r.r1d)}</td>
+    <td>${actionCell(r.action)}${r.mtfLong?' '+p('mtfp','🎯 MTF'):''}</td>
+    <td style="font-size:.65rem">${fvgCell(r.fvgR)}<br>${srCell(r.srR)}</td>
+    <td>${confCell(r.confR,r.conf)}</td>
+  </tr>`;
+}
+
+// ══ FILTER & SORT ═════════════════════════════════════════════════════════
+function setF(btn,f){
+  curFilter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+function applyFilter(){
+  document.querySelectorAll('#tbody tr').forEach(row=>{
+    const tags=row.getAttribute('data-tags')||'ALL';
+    row.style.display=(curFilter==='ALL'||tags.includes(curFilter))?'':'none';
+  });
+}
+function sortBy(col){sortCol=col;sortDir*=-1;renderAll();}
+function openTV(t){window.open(`https://www.tradingview.com/chart/?symbol=${t}`,'_blank');}
+
+function renderAll(){
+  const vals=Object.values(results).filter(Boolean);
+  vals.sort((a,b)=>{
+    if(sortCol==='ticker') return a.ticker.localeCompare(b.ticker)*sortDir;
+    const va=a.pct_1d??999,vb=b.pct_1d??999;
+    return (va-vb)*sortDir;
+  });
+  const tbody=document.getElementById('tbody');
+  if(!vals.length){tbody.innerHTML='<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--dim)">Scanning...</td></tr>';return;}
+  tbody.innerHTML=vals.map(buildRow).join('');
+  applyFilter();
+  const bull=vals.filter(r=>r.ab_1d).length;
+  document.getElementById('cnt').textContent=`${vals.length} tickers | 🟢 ${bull} bull | 🔴 ${vals.length-bull} bear`;
+}
+
+// ══ MAIN SCAN ═════════════════════════════════════════════════════════════
+async function runScan(){
+  if(scanning) return;
+  scanning=true;
+  document.getElementById('lb').classList.add('active');
+  document.getElementById('dot').classList.add('live');
+  document.getElementById('stat').textContent='Scanning...';
+
+  const BATCH=5; // can go faster now - server side fetch
+  let done=0;
+  for(let i=0;i<TICKERS.length;i+=BATCH){
+    const batch=TICKERS.slice(i,i+BATCH);
+    const res=await Promise.all(batch.map(scan));
+    res.forEach((r,idx)=>{if(r) results[batch[idx]]=r;done++;});
+    document.getElementById('prog').textContent=`Scanning ${done}/${TICKERS.length}... (${Object.keys(results).length} loaded)`;
+    renderAll();
+    await new Promise(r=>setTimeout(r,300));
+  }
+
+  scanning=false;
+  document.getElementById('lb').classList.remove('active');
+  document.getElementById('dot').classList.remove('live');
+  document.getElementById('stat').textContent='Live';
+  document.getElementById('dot').classList.add('live');
+  document.getElementById('lupd').textContent='Updated '+new Date().toLocaleTimeString();
+  document.getElementById('prog').textContent='';
+}
+
+runScan();
+setInterval(runScan,5*60*1000);
+</script>
+</body>
+</html>
