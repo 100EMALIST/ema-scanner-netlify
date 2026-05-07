@@ -38,8 +38,8 @@
   .hdr-trade{background:var(--trade-bg);color:var(--white)}
   .hdr-swing{background:var(--swing-bg);color:var(--white)}
   /* CARDS */
-  .grid{display:flex;flex-direction:column;gap:3px}
-  .card{border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .card{border:1px solid rgba(255,255,255,0.25);border-radius:4px;overflow:hidden}
   /* ROWS */
   .crow{display:grid;grid-template-columns:120px 6px repeat(6,1fr);border-top:1px solid rgba(26,37,64,.5)}
   .crow:first-child{border-top:none}
@@ -104,12 +104,19 @@
 </div>
 
 <div class="wrap">
+  <!-- TRADE/SWING section headers -->
+  <div style="display:grid;grid-template-columns:120px 6px 2fr 4fr;margin-bottom:2px;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase">
+    <div style="background:var(--label-bg)"></div>
+    <div style="background:var(--label-bg)"></div>
+    <div style="background:var(--trade-bg);padding:4px 6px;text-align:center;color:var(--white)">── TRADE ──</div>
+    <div style="background:var(--swing-bg);padding:4px 6px;text-align:center;color:var(--white)">── SWING ──</div>
+  </div>
   <div class="col-hdr">
     <div class="hdr-lbl">TICKER</div>
     <div class="hdr-gap"></div>
     <div class="hdr-trade">15m</div>
     <div class="hdr-trade">30m</div>
-    <div class="hdr-trade">1H</div>
+    <div class="hdr-swing">1H</div>
     <div class="hdr-swing">4H</div>
     <div class="hdr-swing">1D</div>
     <div class="hdr-swing">1W</div>
@@ -140,9 +147,14 @@ const TICKERS = [
 ];
 
 const CFG = {
-  CONT_BUY:5, CONT_WATCH:10, REV_WATCH:15,
   VOL_HIGH:1.5, VOL_LOW:0.8, RSI_OS:35, RSI_OB:70,
-  REFRESH:300
+  REFRESH:300,
+  // Per-TF thresholds [buy%, watch%]
+  THRESHOLDS:{
+    tf15m:[2,3], tf30m:[2,3], tf1h:[2,3],
+    tf4h:[2,4],  tf1d:[3,5],  tf1w:[5,10]
+  },
+  REV_WATCH:15
 };
 
 let results={}, failed=[], curFilter='ALL', scanning=false;
@@ -219,7 +231,7 @@ function VWAP(bs){
   return sumv>0?sumpv/sumv:null;
 }
 
-function computeTF(bs,dailyBull,price){
+function computeTF(bs,dailyBull,price,tfKey="tf1d"){
   if(!bs||bs.length<30)return null;
   const e200=EMA(bs,Math.min(200,bs.length-1));
   const e5l=EMA(bs,5,'l');
@@ -232,10 +244,11 @@ function computeTF(bs,dailyBull,price){
   const ab5l=e5l?price>e5l:null;
   const inBand=(e100h&&e100l)?price<=e100h&&price>=e100l:false;
   const vwapPct=vwap?(price-vwap)/vwap*100:null;
+  const [buyT,watchT]=CFG.THRESHOLDS[tfKey]||[5,10];
   let action='–';
   if(dailyBull&&ab200){
-    if(pct200<=CFG.CONT_BUY)action='CONT_BUY';
-    else if(pct200<=CFG.CONT_WATCH)action='CONT_WATCH';
+    if(pct200<=buyT)action='CONT_BUY';
+    else if(pct200<=watchT)action='CONT_WATCH';
   }else if(!dailyBull){
     if(ab200)action='REV_BUY';
     else if(pct200!=null&&pct200<=CFG.REV_WATCH)action='REV_WATCH';
@@ -243,11 +256,18 @@ function computeTF(bs,dailyBull,price){
   return{ab200,pct200,ab5l,inBand,rv,rsiV,fvgR,srR,vwapPct,action};
 }
 
+// Symbol fixes for Yahoo Finance
+const SYMBOL_MAP = {
+  'GOOG':'GOOGL','BABA':'BABA','NIO':'NIO','ASML':'ASML',
+  'GRAB':'GRAB','RZLV':'RKLVY','HNGE':'HNGE','NBIS':'NBIS',
+  'PONY':'PONY','CRWV':'CRWV','BTDR':'BTDR'
+};
 async function scan(ticker){
+  const sym = SYMBOL_MAP[ticker] || ticker;
   try{
     const[d15,d30,d1h,d1d,d1w]=await Promise.all([
-      fetchY(ticker,'15m','60d'),fetchY(ticker,'30m','60d'),
-      fetchY(ticker,'60m','3mo'),fetchY(ticker,'1d','2y'),fetchY(ticker,'1wk','5y')
+      fetchY(sym,'15m','60d'),fetchY(sym,'30m','60d'),
+      fetchY(sym,'60m','3mo'),fetchY(sym,'1d','2y'),fetchY(sym,'1wk','5y')
     ]);
     const b1d=bars(d1d);
     if(b1d.length<60)return null;
@@ -256,9 +276,9 @@ async function scan(ticker){
     const dailyBull=e200_1d?price>e200_1d:false;
 
     const tfs={
-      tf15m:computeTF(bars(d15),dailyBull,price),
-      tf30m:computeTF(bars(d30),dailyBull,price),
-      tf1h:computeTF(bars(d1h),dailyBull,price),
+      tf15m:computeTF(bars(d15),dailyBull,price,'tf15m'),
+      tf30m:computeTF(bars(d30),dailyBull,price,'tf30m'),
+      tf1h:computeTF(bars(d1h),dailyBull,price,'tf1h'),
       tf4h:null,tf1d:null,tf1w:null
     };
 
@@ -267,12 +287,12 @@ async function scan(ticker){
     const ab4h=e200_4h?price>e200_4h:null;
     const pct4h=e200_4h?Math.abs(price-e200_4h)/e200_4h*100:null;
     let act4h='–';
-    if(dailyBull&&ab4h){if(pct4h<=CFG.CONT_BUY)act4h='CONT_BUY';else if(pct4h<=CFG.CONT_WATCH)act4h='CONT_WATCH';}
+    const[buy4h,watch4h]=CFG.THRESHOLDS['tf4h'];if(dailyBull&&ab4h){if(pct4h<=buy4h)act4h='CONT_BUY';else if(pct4h<=watch4h)act4h='CONT_WATCH';}
     else if(!dailyBull){if(ab4h)act4h='REV_BUY';else if(pct4h!=null&&pct4h<=CFG.REV_WATCH)act4h='REV_WATCH';}
     tfs.tf4h={ab200:ab4h,pct200:pct4h,ab5l:null,inBand:false,rv:RVOL(b1d),rsiV:RSI(b1d.slice(-50)),fvgR:FVG(b1d),srR:SR(b1d),vwapPct:null,action:act4h};
 
-    tfs.tf1d=computeTF(b1d,dailyBull,price);
-    tfs.tf1w=computeTF(bars(d1w),dailyBull,price);
+    tfs.tf1d=computeTF(b1d,dailyBull,price,'tf1d');
+    tfs.tf1w=computeTF(bars(d1w),dailyBull,price,'tf1w');
 
     const mtfLong=dailyBull&&ab4h===false;
     let conf=0;
@@ -367,7 +387,7 @@ function cConf(r){
 function buildCard(res){
   const{ticker,price,dailyBull,mtfLong,confR,tfs,tags}=res;
   const TL=['tf15m','tf30m','tf1h','tf4h','tf1d','tf1w'];
-  const TC=['trade','trade','trade','swing','swing','swing'];
+  const TC=['trade','trade','swing','swing','swing','swing'];
   const T=TL.map(k=>tfs[k]);
   const cells=(fn)=>T.map(t=>t?fn(t):nd());
   const row=(lbl,cls)=>`<div class="crow">
