@@ -39,7 +39,7 @@
   .hdr-swing{background:var(--swing-bg);color:var(--white)}
   /* CARDS */
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-  .card{border:1px solid rgba(255,255,255,0.25);border-radius:4px;overflow:hidden}
+  .card{border:2px solid rgba(255,255,255,0.4);border-radius:4px;overflow:hidden}
   /* ROWS */
   .crow{display:grid;grid-template-columns:120px 6px repeat(6,1fr);border-top:1px solid rgba(26,37,64,.5)}
   .crow:first-child{border-top:none}
@@ -104,23 +104,7 @@
 </div>
 
 <div class="wrap">
-  <!-- TRADE/SWING section headers -->
-  <div style="display:grid;grid-template-columns:120px 6px 2fr 4fr;margin-bottom:2px;font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase">
-    <div style="background:var(--label-bg)"></div>
-    <div style="background:var(--label-bg)"></div>
-    <div style="background:var(--trade-bg);padding:4px 6px;text-align:center;color:var(--white)">── TRADE ──</div>
-    <div style="background:var(--swing-bg);padding:4px 6px;text-align:center;color:var(--white)">── SWING ──</div>
-  </div>
-  <div class="col-hdr">
-    <div class="hdr-lbl">TICKER</div>
-    <div class="hdr-gap"></div>
-    <div class="hdr-trade">15m</div>
-    <div class="hdr-trade">30m</div>
-    <div class="hdr-swing">1H</div>
-    <div class="hdr-swing">4H</div>
-    <div class="hdr-swing">1D</div>
-    <div class="hdr-swing">1W</div>
-  </div>
+
   <div class="grid" id="grid">
     <div style="padding:40px;text-align:center;color:var(--dim)">Starting scan...</div>
   </div>
@@ -405,6 +389,13 @@ function buildCard(res){
     :`<span style="color:var(--red);font-weight:700">REVERSAL</span>`;
 
   return`<div class="card" data-tags="${tags}">
+    <!-- TRADE/SWING section headers inside card -->
+    <div style="display:grid;grid-template-columns:120px 6px 2fr 4fr">
+      <div style="background:var(--label-bg)"></div>
+      <div style="background:var(--label-bg)"></div>
+      <div style="background:var(--trade-bg);padding:3px 4px;text-align:center;font-size:.58rem;font-weight:700;letter-spacing:.08em;color:var(--white)">── TRADE ──</div>
+      <div style="background:var(--swing-bg);padding:3px 4px;text-align:center;font-size:.58rem;font-weight:700;letter-spacing:.08em;color:var(--white)">── SWING ──</div>
+    </div>
     <div class="tick-row">
       <div class="tick-name ${dailyBull?'bull':'bear'}" onclick="openTV('${ticker}')">
         ${ticker}<br><span style="font-size:.58rem;color:var(--dim);font-weight:400">$${price?.toFixed(2)||'–'}</span>
@@ -444,7 +435,7 @@ function applyFilter(){
     c.style.display=(curFilter==='ALL'||tags.includes(curFilter))?'':'none';
   });
 }
-function openTV(t){window.open(`https://www.tradingview.com/chart/?symbol=${t}`,'_blank')}
+function openTV(t){window.open(`tradingview://chart/?symbol=${t}`,'_blank')}
 
 function renderAll(){
   const vals=Object.values(results).filter(Boolean);
