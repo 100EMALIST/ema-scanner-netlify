@@ -38,7 +38,7 @@
   .hdr-trade{background:var(--trade-bg);color:var(--white)}
   .hdr-swing{background:var(--swing-bg);color:var(--white)}
   /* CARDS */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
   .card{border:2px solid rgba(255,255,255,0.4);border-radius:4px;overflow:hidden}
   /* ROWS */
   .crow{display:grid;grid-template-columns:120px 6px repeat(6,1fr);border-top:1px solid rgba(26,37,64,.5)}
@@ -94,13 +94,9 @@
   <button class="fbtn" onclick="setF(this,'CONT_WATCH')">CONT WATCH</button>
   <button class="fbtn" onclick="setF(this,'REV_BUY')">REV BUY</button>
   <button class="fbtn" onclick="setF(this,'REV_WATCH')">REV WATCH</button>
-  <button class="fbtn" onclick="setF(this,'MTF')">🎯 MTF LONG</button>
   <button class="fbtn" onclick="setF(this,'NEAR')">NEAR 200</button>
-  <button class="fbtn" onclick="setF(this,'FVG')">IN FVG</button>
-  <button class="fbtn" onclick="setF(this,'RSI_OS')">RSI OVERSOLD</button>
   <button class="fbtn" onclick="setF(this,'HIGH_VOL')">HIGH VOL</button>
   <button class="fbtn" onclick="setF(this,'LOW_VOL')">LOW VOL</button>
-  <button class="fbtn" onclick="setF(this,'APLUS')">A+ SETUP</button>
   <button id="manual-scan" style="padding:4px 14px;border-radius:3px;border:1px solid var(--green);background:var(--buy-bg);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:.68rem;cursor:pointer;font-weight:700;margin-left:10px">⟳ SCAN NOW</button>
 </div>
 
@@ -405,16 +401,7 @@ function buildCard(res){
     ${row('VOLUME',        cells(t=>cVol(t.rv)))}
     ${blank()}
     ${row(actLabel,        cells(t=>cAction(t.action)))}
-    ${row(`<span style="color:var(--purple)">MTF LONG</span>`,
-      T.map((_,i)=>i===2?(mtfLong?p('mtfp','🎯 LONG'):nd()):nd()))}
-    ${blank()}
-    ${row('RSI',      cells(t=>cRSI(t.rsiV)))}
-    ${row('VWAP',     cells(t=>cVWAP(t.vwapPct)))}
-    ${row('FVG',      cells(t=>cFVG(t.fvgR)))}
-    ${row('S/R LEVEL',cells(t=>cSR(t.srR)))}
-    ${blank()}
-    ${row(`<span style="color:var(--gold)">CONFLUENCE</span>`,
-      T.map((_,i)=>i===4?cConf(confR):nd()))}
+
   </div>`;
 }
 
