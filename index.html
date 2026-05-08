@@ -80,7 +80,6 @@
   <div class="topinfo">
     <span><span class="dot" id="dot"></span><span id="stat">Initialising...</span></span>
     <span id="lupd"></span>
-    <span>Next refresh: <span class="nxt" id="nxt">5:00</span></span>
     <span id="cnt"></span>
   </div>
 </div>
@@ -102,6 +101,7 @@
   <button class="fbtn" onclick="setF(this,'HIGH_VOL')">HIGH VOL</button>
   <button class="fbtn" onclick="setF(this,'LOW_VOL')">LOW VOL</button>
   <button class="fbtn" onclick="setF(this,'APLUS')">A+ SETUP</button>
+  <button id="manual-scan" style="padding:4px 14px;border-radius:3px;border:1px solid var(--green);background:var(--buy-bg);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:.68rem;cursor:pointer;font-weight:700;margin-left:10px">⟳ SCAN NOW</button>
 </div>
 
 <div class="wrap">
@@ -473,8 +473,9 @@ async function runScan(){
   document.getElementById('prog').textContent='';
 }
 
-runScan();
-setInterval(runScan,CFG.REFRESH*1000);
+// Auto-refresh disabled to save credits - manual scan only
+// runScan called once on load, use the button to rescan
+document.getElementById('manual-scan').addEventListener('click', runScan);
 </script>
 </body>
 </html>
