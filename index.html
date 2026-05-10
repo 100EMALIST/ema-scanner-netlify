@@ -112,7 +112,7 @@
   <div class="fail-list" id="fl"></div>
 </div>
 
-<footer>Data: Yahoo Finance via Netlify backend · Auto-refreshes every 5 min · Click ticker → TradingView · Not financial advice</footer>
+<footer>Data: Tiingo via Vercel backend · Auto-refreshes every 5 min · Click ticker → TradingView · Not financial advice</footer>
 
 <script>
 const TICKERS = [
@@ -149,17 +149,22 @@ setInterval(()=>{
 },1000);
 
 // Fetch
-async function fetchY(ticker,interval,range){
+async function fetchT(ticker, interval, startDate){
   try{
-    const r=await fetch(`/.netlify/functions/yahoo?ticker=${ticker}&interval=${interval}&range=${range}`,{signal:AbortSignal.timeout(15000)});
+    const r=await fetch(`/api/tiingo?ticker=${ticker}&interval=${interval}&startDate=${startDate}`,{signal:AbortSignal.timeout(15000)});
     return r.ok?await r.json():null;
   }catch{return null}
 }
 
 function bars(d){
   try{
-    const q=d.chart.result[0].indicators.quote[0];
-    return q.close.map((c,i)=>({h:q.high[i],l:q.low[i],c,v:q.volume[i]})).filter(x=>x.c!=null&&x.h!=null);
+    if(!Array.isArray(d))return[];
+    return d.map(b=>({
+      h: b.high||b.adjHigh||b.close,
+      l: b.low||b.adjLow||b.close,
+      c: b.close||b.adjClose,
+      v: b.volume||0
+    })).filter(x=>x.c!=null&&x.h!=null);
   }catch{return[]}
 }
 
@@ -246,9 +251,13 @@ const SYMBOL_MAP = {
 async function scan(ticker){
   const sym = SYMBOL_MAP[ticker] || ticker;
   try{
+    const today=new Date().toISOString().split('T')[0];
+    const y2=new Date(Date.now()-2*365*864e5).toISOString().split('T')[0];
+    const y5=new Date(Date.now()-5*365*864e5).toISOString().split('T')[0];
+    const d30s=new Date(Date.now()-30*864e5).toISOString().split('T')[0];
     const[d15,d30,d1h,d1d,d1w]=await Promise.all([
-      fetchY(sym,'15m','60d'),fetchY(sym,'30m','60d'),
-      fetchY(sym,'60m','3mo'),fetchY(sym,'1d','2y'),fetchY(sym,'1wk','5y')
+      fetchT(sym,'15min',d30s),fetchT(sym,'30min',d30s),
+      fetchT(sym,'1hour',d30s),fetchT(sym,'1day',y2),fetchT(sym,'1week',y5)
     ]);
     const b1d=bars(d1d);
     if(b1d.length<60)return null;
